@@ -1,0 +1,12 @@
+{
+  "name": "x-dm-api",
+  "version": "1.0.0",
+  "description": "The X-DM-API provides developers with powerful tools to integrate direct messaging (DM) functionality into their applications. It enables seamless interaction with users on X by automating DMs, sending personalized messages, and managing conversations in real-time",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
