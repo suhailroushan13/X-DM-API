@@ -11,7 +11,7 @@ Follow the instructions below to set up and start using the X-DM-API.
 
 1. **Clone the repository**  
    ```bash
-   git clone https://github.com/suhailroushan13/X-DM-API
+   git clone git@github.com:suhailroushan13/X-DM-API.git
    cd X-DM-API
    ```
 
