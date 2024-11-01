@@ -1,102 +1,140 @@
-import { Builder, By, Key, until } from 'selenium-webdriver';
+import { Builder, By, Key, until } from "selenium-webdriver";
+import dotenv from "dotenv";
+import fs from "fs/promises";
+dotenv.config();
+
+const username = process.env.TWITTER_USERNAME;
+
+const password = process.env.TWITTER_PASSWORD;
+
+const data = await fs.readFile("following.json", "utf-8");
+const jsonData = JSON.parse(data);
+
+const profileUrls = jsonData;
+// console.log(profileUrls);
+
+const delay = () => {
+  const ms = 6000 + Math.random() * 4000; // Random delay between 6000 and 10000 ms
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
+// // Generate a random delay to mimic human pauses
+// function randomPause(min = 2000, max = 5000) {
+//   return new Promise((resolve) =>
+//     setTimeout(resolve, Math.floor(Math.random() * (max - min + 1000) + min))
+//   );
+// }
 
 async function twitterLogin(driver, username, password) {
   try {
-    // Step 1: Log in to Twitter (X)
-    await driver.get('https://twitter.com/login');
-    await driver.wait(until.elementLocated(By.name('text')), 10000);
+    await driver.get("https://twitter.com/login");
+    await driver.wait(until.elementLocated(By.name("text")), 10000);
 
-    let emailField = await driver.findElement(By.name('text'));
+    let emailField = await driver.findElement(By.name("text"));
     await emailField.sendKeys(username, Key.RETURN);
 
-    await driver.wait(until.elementLocated(By.name('password')), 10000);
-    let passwordField = await driver.findElement(By.name('password'));
+    await driver.wait(until.elementLocated(By.name("password")), 10000);
+    let passwordField = await driver.findElement(By.name("password"));
     await passwordField.sendKeys(password, Key.RETURN);
 
-    await driver.wait(until.urlContains('home'), 15000);
-    console.log('Login successful!');
+    await driver.wait(until.urlContains("home"), 15000);
+    console.log("Login successful!");
   } catch (error) {
-    console.error('Login failed:', error);
+    console.error("Login failed:", error);
   }
 }
 
 async function sendPersonalizedMessage(driver, profileUrl) {
   try {
-    // Step 2: Navigate to the profile URL
+    // Navigate to the user profile URL
     await driver.get(profileUrl);
     await driver.wait(until.urlIs(profileUrl), 10000);
     console.log(`Navigated to: ${profileUrl}`);
 
-    // Step 3: Extract the name using a more reliable selector
-    let nameElement = await driver.wait(
+    // Wait for the user name element and extract the name
+    const nameElement = await driver.wait(
       until.elementLocated(By.css('div[data-testid="UserName"] span')),
       10000
     );
-    let name = await nameElement.getText();
+    const name = await nameElement.getText();
     console.log(`Extracted name: ${name}`);
 
-    // Step 4: Click the "Message" button
-    let messageButton = await driver.wait(
-      until.elementLocated(By.css('button[data-testid="sendDMFromProfile"]')),
-      10000
-    );
-    await messageButton.click();
-    console.log('Message button clicked!');
+    const personalizedMessage = `Hi ${name}, I own the domain code.live and think it could align well with your brand or tools. Let me know if you're interested! :)`;
 
-    // Step 5: Enter the personalized message
-    let messageInput = await driver.wait(
+    // Locate and click the message button, skip if it doesn’t exist
+    let messageButton;
+    try {
+      messageButton = await driver.wait(
+        until.elementLocated(By.css('button[data-testid="sendDMFromProfile"]')),
+        20000
+      );
+      await messageButton.click();
+      console.log("Message button clicked!");
+    } catch (error) {
+      console.log("Message button not found. Skipping message send.");
+      return; // Exit if the message button isn't found
+    }
+
+    // Wait for the message input field to appear
+    const messageInput = await driver.wait(
       until.elementLocated(By.css('div[data-testid="dmComposerTextInput"]')),
-      10000
+      30000
     );
 
-    //  SEND HERE YOUR CUSTOM MESSAGE 
-    ////////////////////////////////////////////////////////////
-    let personalizedMessage = `Hello ${name}! How are you today?`;
-    /////////////////////////////////////////////////////////////
+    // Check if the input field already contains the message to prevent duplication
+    const existingContent = await messageInput.getAttribute("textContent");
+    if (existingContent.includes(personalizedMessage.trim())) {
+      console.log("Message already typed, skipping send.");
+      return;
+    }
 
-
-    
+    // Clear the input field (if needed) and enter the personalized message
+    await messageInput.clear();
     await messageInput.sendKeys(personalizedMessage);
-    console.log('Personalized message entered!');
+    console.log("Personalized message entered!");
 
-    // Step 6: Click the "Send" button
-    let sendButton = await driver.wait(
-      until.elementLocated(By.css('button[data-testid="dmComposerSendButton"]')),
-      10000
+    // Locate and click the send button
+    const sendButton = await driver.wait(
+      until.elementLocated(
+        By.css('button[data-testid="dmComposerSendButton"]')
+      ),
+      20000
     );
-    await sendButton.click();
-    console.log('Message sent!');
+
+    // Ensure the send button is enabled before clicking
+    const isDisabled = await sendButton.getAttribute("disabled");
+    if (!isDisabled) {
+      await sendButton.click();
+      console.log("Message sent!");
+    } else {
+      console.log("Send button is disabled, message not sent.");
+    }
+
+    // Final delay to avoid sending duplicate messages
+    await delay(5000);
   } catch (error) {
     console.error(`Error while sending message to ${profileUrl}:`, error);
   }
 }
 
-
 async function main(username, password, profileUrls) {
-    let driver = await new Builder().forBrowser('chrome').build();
-  
-    try {
-      // Log in once with provided credentials
-      await twitterLogin(driver, username, password);
-  
-      // Loop through the array of profiles and send personalized messages
-      for (const profileUrl of profileUrls) {
-        await sendPersonalizedMessage(driver, profileUrl);
-      }
-    } catch (error) {
-      console.error('Error in main function:', error);
-    } finally {
-      // Close the browser after execution
-      await driver.quit();
+  let driver = await new Builder().forBrowser("chrome").build();
+
+  try {
+    // Log in once with provided credentials
+    await twitterLogin(driver, username, password);
+
+    // Loop through the array of profiles and send personalized messages
+    for (const profileUrl of profileUrls) {
+      await sendPersonalizedMessage(driver, profileUrl);
     }
+  } catch (error) {
+    console.error("Error in main function:", error);
+  } finally {
+    // Close the browser after execution
+    await driver.quit();
   }
-  
-  // Example usage: Providing the parameters directly
-  const username = '0xsuhailroushan';  // Twitter Username
+}
 
-  const password = 'TWITTER-PASSWORD';  // Twiiter Password
-
-  const profileUrls = ['https://x.com/0xsuhailroushan','https://x.com/csprojects_xyz']; // Profile URL's to Send Message
-  
-  // Call the main function with parameters
-  main(username, password, profileUrls);
+// Call the main function with parameters
+main(username, password, profileUrls);

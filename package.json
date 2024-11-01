@@ -11,6 +11,7 @@
   "author": "Suhail Roushan",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^16.4.5",
     "selenium-webdriver": "^4.25.0"
   }
 }
